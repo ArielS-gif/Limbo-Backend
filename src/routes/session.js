@@ -153,14 +153,12 @@ module.exports = (app) => {
         });
     });
 
-    app.get('/fortnite/api/matchmaking/session/findPlayer/:accountId', verifyToken, async (ctx) => {
-        const accountId = ctx.params.accountId;
-        if (!accountId) return ctx.status(400).end();
+    app.get('/fortnite/api/matchmaking/session/findPlayer/:accountId', verifyToken, async (req, res) => {
+        const accountId = req.params.accountId;
+        if (!accountId) return res.status(400).end();
 
         const sessions = await findPlayer(accountId);
-        if (!sessions) return ctx.status(404).end();
-
-        ctx.body = sessions;
+        res.json(sessions);
     });
 }
 
@@ -170,7 +168,7 @@ async function getSession(id) {
 
 async function findPlayer(accountId) {
     if (typeof accountId !== "string") return [];
-    return await SessionModel.find({ $or: [{ "publicPlayers.accountId": accountId }, { "privatePlayers.accountId": accountId }] }).lean();
+    return await SessionModel.find({ $or: [{ publicPlayers: accountId }, { privatePlayers: accountId }] }).lean();
 }
 
 const queryIgnore = ["MAXDIFFICULTY_i", "MINDIFFICULTY_i", "NEEDSSORT_i"];

@@ -19,3 +19,6 @@ const port = process.env.PORT || 3551;
 server.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
+
+// OT6.5: chat and presence for the game (XMPP, port 5222).
+require('./src/xmpp')();

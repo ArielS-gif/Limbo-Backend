@@ -87,10 +87,28 @@ module.exports = (app) => {
             });
         }
         
-        console.log(`[MCP] ${operationName} is not implemented yet.`);
+        // Fallback: operation has no implementation. Rather than 404 (which fails the in-game action),
+        // return a valid no-op MCP response so the client proceeds. Still logged so missing ops are visible.
+        console.log(`[MCP] ${operationName} is not implemented yet (returning no-op).`);
         console.log(req.body);
 
-        return res.status(404).json({ error: "operation_not_valid" });
+        const profile = await ProfileModel.findOne({ accountId, profileId });
+        if (!profile) return res.status(404).json({ error: "profile_id_not_found" });
+
+        const BaseRevision = profile.rvn || 0;
+        const QueryRevision = req.query.rvn || -1;
+
+        return res.json({
+            profileRevision: profile.rvn || 0,
+            profileId: profile.profileId,
+            profileChangesBaseRevision: BaseRevision,
+            profileChanges: QueryRevision !== BaseRevision
+                ? [{ changeType: "fullProfileUpdate", profile }]
+                : [],
+            profileCommandRevision: profile.commandRevision || 0,
+            serverTime: new Date().toISOString(),
+            responseVersion: 1
+        });
     });
 }
 

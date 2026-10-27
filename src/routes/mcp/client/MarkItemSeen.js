@@ -7,9 +7,11 @@ module.exports = {
         let changed = false;
 
         const itemIds = req.body.itemIds;
-        if (!itemIds) return res.status(400).json({ error: "missing_item_ids" });
+        if (!Array.isArray(itemIds)) return res.status(400).json({ error: "missing_item_ids" });
 
         for (const itemId of itemIds) {
+            const item = profile.items[itemId];
+            if (!item || !item.attributes) continue;
             profileWrapper.updateAttribute(itemId, "item_seen", true, req.mcp.profileChanges);
             profileWrapper.updateAttribute(itemId, "bItemSeen", 1, req.mcp.profileChanges);
             changed = true;

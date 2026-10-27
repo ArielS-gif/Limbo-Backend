@@ -18,6 +18,7 @@ module.exports = {
             value: profile.stats.attributes.mode_loadouts,
         });
 
+        profile.markModified("stats.attributes.mode_loadouts");
         await profile.save();
     }
 };

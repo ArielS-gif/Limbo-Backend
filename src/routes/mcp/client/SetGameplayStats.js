@@ -7,7 +7,7 @@ module.exports = {
         const { gameplayStats } = req.body;
         if (!gameplayStats) return res.status(400).json({ error: "missing_gameplay_stats" });
 
-        profileWrapper.updateStat("gameplayStats", gameplayStats, req.mcp.profileChanges);
+        profileWrapper.updateStat("gameplay_stats", gameplayStats, req.mcp.profileChanges);
 
         await profile.save();
     }

@@ -51,7 +51,7 @@ const completeQuest = (profile, questId, ApplyProfileChanges = []) => {
                 "changeType": "itemAttrChanged",
                 "itemId": profileQuest.key,
                 "attributeName": `completion_${backendName}`,
-                "attributeValue": 1
+                "attributeValue": objective.Count
             })
         };
     }
@@ -135,6 +135,7 @@ function checkForCompleteQuests(questProfile, ApplyProfileChanges = []) {
         // if all completion stats are equal to the objective count, complete the quest
         const questData = getItem(quest.templateId);
         if (!questData) continue;
+        if (!questData.Properties || !Array.isArray(questData.Properties.Objectives)) continue;
 
         let bIncomplete = false;
         for (const objective of questData.Properties.Objectives) {

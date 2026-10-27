@@ -19,6 +19,23 @@ module.exports = {
         let previousWorker;
         if (!building || !building.templateId.startsWith("MyFortBuilding.")) return res.status(400).json({ error: "invalid_worker_or_building" });
 
+        // If this worker is already slotted in another building/slot, clear that old slot first
+        // so the same worker doesn't appear in two places.
+        if (worker && worker.attributes) {
+            const oldBuildingId = worker.attributes.Slotted_Building_Id;
+            const oldSlot = worker.attributes.Building_Slot_Used;
+            const oldBuilding = profile.items[oldBuildingId];
+            if (oldBuilding && !(oldBuildingId === buildingId && oldSlot === slotIndexInt)) {
+                if (oldSlot === 0 || oldSlot === '0') {
+                    profileWrapper.updateAttribute(oldBuildingId, "managerInstanceId", '', req.mcp.profileChanges);
+                } else if (typeof oldSlot === 'number' && oldSlot > 0) {
+                    const oldWorkers = oldBuilding.attributes.workerInstanceIds || ['', '', '', '', '', ''];
+                    oldWorkers[oldSlot - 1] = '';
+                    profileWrapper.updateAttribute(oldBuildingId, "workerInstanceIds", oldWorkers, req.mcp.profileChanges);
+                }
+            }
+        }
+
         if (slotIndexInt === 0) {
             previousWorker = building.attributes.managerInstanceId;
             profileWrapper.updateAttribute(buildingId, "managerInstanceId", workerId, req.mcp.profileChanges);

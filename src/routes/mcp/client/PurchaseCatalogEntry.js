@@ -5,8 +5,11 @@ const catalog = require("../../../../common/catalog.json");
 module.exports = {
     name: "PurchaseCatalogEntry",
     handle: async (req, res, profile) => {
-        const { offerId, purchaseQuantity, currency, currencySubType, expectedPrice } = req.body;
+        const { offerId, purchaseQuantity, currency, currencySubType } = req.body;
         if (!offerId) return res.status(400).send({ error: "Invalid request body" });
+        const qty = purchaseQuantity || 1;
+        // The client sends the expected total as "expectedTotalPrice"; accept "expectedPrice" too, just in case.
+        const expected = req.body.expectedTotalPrice ?? req.body.expectedPrice;
         // todo: validate body some stuff might be optional (?)
 
         let offer;
@@ -32,8 +35,8 @@ module.exports = {
 
         switch (requestedPrice.currencyType) {
             case "MtxCurrency":
-                const cost = requestedPrice.finalPrice * purchaseQuantity;
-                if (expectedPrice !== cost) return res.status(400).send({ error: "Invalid price" });
+                const cost = requestedPrice.finalPrice * qty;
+                if (expected !== cost) return res.status(400).send({ error: "Invalid price" });
                 const userCurrency = profileWrapper.getMtx();
                 if (userCurrency < cost) return res.status(400).send({ error: "Not enough currency" });
                 
@@ -44,7 +47,7 @@ module.exports = {
         }
 
         for (const itemGrant of itemGrants) {
-            profileWrapper.addQuantity(itemGrant.templateId, itemGrant.quantity, req.mcp.profileChanges);
+            profileWrapper.addQuantity(itemGrant.templateId, itemGrant.quantity * qty, req.mcp.profileChanges);
         }
 
         await profile.save();

@@ -64,7 +64,8 @@ module.exports = (app) => {
 
     app.get("/fortnite/api/cloudstorage/user/*/:file", verifyToken, async (req, res) => {
         const file = req.params.file;
-    
+        req.user.cloudStorage = req.user.cloudStorage || {};
+
         if (!req.user.cloudStorage[file]) return res.status(200).end();
     
         res.setHeader("Content-Type", "application/octet-stream; charset=iso-8859-1");
@@ -97,7 +98,8 @@ module.exports = (app) => {
 
     app.delete("/fortnite/api/cloudstorage/user/*/:file", verifyToken, async (req, res) => {
         const fileName = req.params.file;
-    
+        req.user.cloudStorage = req.user.cloudStorage || {};
+
         delete req.user.cloudStorage[fileName];
     
         await UserModel.updateOne({ accountId: req.user.accountId }, { $set: { cloudStorage: req.user.cloudStorage } });

@@ -10,7 +10,7 @@ module.exports = {
         const login_reward = profile.stats.attributes.login_reward;
         if (!login_reward) profile.stats.attributes.login_reward = { next_level: 0, last_claim_time: null };
 
-        if (!login_reward.next_level || login_reward.next_level >= 335) {
+        if (!login_reward.next_level || login_reward.next_level > 335) {
             login_reward.next_level = 0;
         }
 
@@ -20,8 +20,6 @@ module.exports = {
             if (last_claim_time === current_time) return res.status(400).json({ error: "already_claimed_daily_reward" });
         }
             
-
-        login_reward.next_level += 1;
 
         const table = getTable("DailyRewards");
         if (!table) return res.status(400).json({ error: "missing_daily_rewards_table" });
@@ -36,6 +34,7 @@ module.exports = {
         if (!item) return res.status(400).json({ error: "missing_daily_reward_item" });
 
         login_reward.last_claim_time = new Date().toISOString();
+        login_reward.next_level += 1;
 
         profileWrapper.addQuantity(item.templateId, ItemCount, req.mcp.profileChanges);
         profileWrapper.updateStat("login_reward", login_reward, req.mcp.profileChanges);

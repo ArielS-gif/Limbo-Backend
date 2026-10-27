@@ -39,8 +39,11 @@ module.exports = {
         for (const reward of questData.Properties.Rewards) {
             const { ItemDefinition, Quantity } = reward;
             const item = getItem(ItemDefinition.split(".")[1]);
+            if (!item) {
+                console.error(`Reward item ${ItemDefinition} not found`);
+                continue;
+            }
             console.log(`Adding reward ${item.templateId} x${Quantity}`);
-            if (!item) return res.status(400).json({ error: "invalid_reward_item" });
 
             if (item.prefix === "Quest") {
                 addQuest(profile, item.templateId, req.mcp.profileChanges);

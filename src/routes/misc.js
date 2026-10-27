@@ -4,6 +4,35 @@ const path = require('path');
 const worldInfo = require('../../common/world_info.json');
 const catalog = require('../../common/catalog.json');
 
+// OT6.5: world_info comes from a later build. More than half of its missions name a generator this 2016 client
+// doesn't have (Plankerton's "T2" missions, Canny Valley's and Twine's rocket launches), and Play on those tiles did
+// nothing. Each missing generator is served as the nearest one the client has, so every tile opens a mission. (The
+// object is shared with the other routes that read world_info; only missionGenerator changes.)
+const kClientGenerators = new Set(["1Gate", "2Gates", "3Gates", "4Gates", "DeliverTheGoods", "LaunchTheRocket", "PowerTheStormShield",
+    "RetrieveTheData", "TheOutpost_PvE_01", "TheOutpost_PvE_02", "TheOutpost_PvE_03", "TheOutpost_PvE_04", "Onboarding_Fort"]);
+const kNearestGenerator = [
+    [/4Gates/, "4Gates"], [/3Gates/, "3Gates"], [/2Gates|EtSurvivors/, "2Gates"],
+    [/RtD|RetrieveTheData/, "RetrieveTheData"],                      // Retrieve the Data
+    [/RtL|LtR_|LaunchTheRocket/, "LaunchTheRocket"],                 // Ride the Lightning, the rocket launches
+    [/DtB|DeliverTheGoods/, "DeliverTheGoods"],                      // Deliver the Bomb
+    [/RtS|BuildtheRadarGrid|StormShield/, "PowerTheStormShield"],    // Repair the Shelter, Build the Radar Grid
+];
+const generatorPath = (name) => `/Game/World/MissionGens/MissionGen_${name}.MissionGen_${name}_C`;
+{
+    const served = {};
+    for (const theater of worldInfo.missions || []) {
+        for (const mission of theater.availableMissions || []) {
+            const name = (mission.missionGenerator || "").split(".").pop().replace(/^MissionGen_|_C$/g, "");
+            if (kClientGenerators.has(name)) continue;
+            const nearest = (kNearestGenerator.find(([pattern]) => pattern.test(name)) || [null, "1Gate"])[1];
+            mission.missionGenerator = generatorPath(nearest);
+            served[`${name} -> ${nearest}`] = (served[`${name} -> ${nearest}`] || 0) + 1;
+        }
+    }
+    const count = Object.values(served).reduce((a, b) => a + b, 0);
+    if (count) console.log(`[OT6.5] ${count} mission(s) served with a generator this client has: ${Object.entries(served).map(([k, n]) => `${k} x${n}`).join(", ")}`);
+}
+
 module.exports = (app) => {
     app.get('/fortnite/api/game/v2/world/info', (req, res) => {
         res.writeHead(200, { "Content-Type": "application/json" });
@@ -114,7 +143,7 @@ module.exports = (app) => {
     });
 
     app.get("/friends/api/public/list/fortnite/:accountId/recentPlayers", (req, res) => {
-        res.json({ recentplayers: [] })
+        res.json([])
     });
 
     app.get("/account", (req, res) => {
