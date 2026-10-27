@@ -1,4 +1,4 @@
-const { Schema, model } = require('mongoose');
+const { Schema, model } = require('../db');
 
 const UserSchema = new Schema({
     accountId: { type: String, required: true },

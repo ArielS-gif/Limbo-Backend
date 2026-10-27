@@ -10,7 +10,7 @@ process.on('uncaughtException', console.error);
 process.on('unhandledRejection', console.error);
 
 const app = express();
-require('./src/mongoose')(app);
+require('./src/db').open();
 require('./src/express')(app);
 
 const server = http.createServer(app);

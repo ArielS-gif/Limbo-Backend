@@ -132,4 +132,5 @@ package-lock.json
 
 # Local files (Limbo-Backend)
 NodeServer.bat
+data/
 common/world_info.original.json

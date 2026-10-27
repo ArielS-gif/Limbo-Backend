@@ -1,4 +1,4 @@
-const { Schema, model } = require('mongoose');
+const { Schema, model } = require('../db');
 
 const SessionSchema = new Schema({
     id: { type: String, required: true, unique: true },

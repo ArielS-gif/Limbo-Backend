@@ -7,19 +7,21 @@ This is the backend for [Limbo](https://github.com/ArielS-gif/Limbo). It's based
 - Saving your backpack and rewards between missions
 - Chat with friends (runs on port 5222)
 - Missions from the Play tab that didn't work before now open
+- Every homebase is fully built (top power level), and no map tile waits on a quest
+- No MongoDB: accounts are saved as files in the `data` folder, so there's nothing else to install
 - A bunch of small bug fixes
 
 ## Setup
 
 1. Download `Limbo-Backend.zip` from [Releases](https://github.com/ArielS-gif/Limbo-Backend/releases) and unzip it
    next to Limbo. (Use this instead of "Download ZIP", which names the folder `Limbo-Backend-main`.)
-2. Install [Node.js](https://nodejs.org) and [MongoDB](https://www.mongodb.com/try/download/community)
-   (leave "Install MongoDB as a Service" ticked).
-3. Start it with Limbo's `Play Limbo.bat`. The first time, it runs `npm install` and makes a `.env` with a new,
-   empty database called `limbo`.
+2. Start it with Limbo's `Play Limbo.bat`. The first time, it installs Node.js if it's missing, runs `npm install` and
+   makes a `.env`.
 
-To run it without Limbo: run `npm install`, copy `.env.example` to `.env` and fill it in (`PORT=3551`,
-`MONGO_URI=mongodb://127.0.0.1:27017/limbo`, any long random `JWT_SECRET`), then run `node index.js`.
+To run it without Limbo: install [Node.js](https://nodejs.org), run `npm install`, copy `.env.example` to `.env` and
+fill it in (`PORT=3551` and any long random `JWT_SECRET`), then run `node index.js`.
+
+Accounts are saved in the `data` folder. Delete it to start over.
 
 The original Fortify-Alpha code belongs to vopswtf. Their README is below.
 

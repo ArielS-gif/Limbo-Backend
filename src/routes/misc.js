@@ -32,6 +32,18 @@ const generatorPath = (name) => `/Game/World/MissionGens/MissionGen_${name}.Miss
     const count = Object.values(served).reduce((a, b) => a + b, 0);
     if (count) console.log(`[OT6.5] ${count} mission(s) served with a generator this client has: ${Object.entries(served).map(([k, n]) => `${k} x${n}`).join(", ")}`);
 }
+// Limbo: no tile waits on anything (a few wait on outpost quests); the power locks go with the fully built homebase
+// (util/homebase.js).
+for (const theater of worldInfo.theaters || []) {
+    for (const tile of theater.tiles || []) {
+        tile.requirements = {
+            ...tile.requirements,
+            commanderLevel: 0, personalPowerRating: 0, partyPowerRating: 0,
+            activeQuestDefinition: "None", questDefinition: "None", itemDefinition: "None",
+            objectiveStatHandle: { dataTable: "None", rowName: "None" },
+        };
+    }
+}
 
 module.exports = (app) => {
     app.get('/fortnite/api/game/v2/world/info', (req, res) => {

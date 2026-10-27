@@ -1,4 +1,4 @@
-const { Schema, model } = require('mongoose');
+const { Schema, model } = require('../db');
 
 const stats = {
     templateId: "profile_v2",

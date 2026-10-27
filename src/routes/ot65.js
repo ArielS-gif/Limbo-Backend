@@ -6,6 +6,7 @@ const crypto = require("crypto");
 const ProfileModel = require("../model/profile");
 const ProfileWrapper = require("../util/ProfileWrapper");
 const { getItem } = require("../util/gameData");
+const quests = require("../util/quests");
 const worldInfo = require("../../common/world_info.json");
 
 // The highest harvest-weapon tier a hero's kits know (Kit_HarvestWeapon_T01..T08 = tags Homebase.HarvestWeapon.Tier0..7).
@@ -246,6 +247,17 @@ module.exports = (app) => {
                 if (name) lines.push(`gadget ${name.split(/[.:]/).pop()}`);
             }
         }
+        // The outposts' structures, "structure <outpost> <asset> <level>": what was upgraded there (limbo_outposts), and
+        // the storm shield at least one level for each of the outpost's quests won.
+        const outposts = stats.limbo_outposts || {};
+        for (let n = 1; n <= 4; n++) {
+            const levels = { ...(outposts[n] || {}) };
+            const quest = new RegExp(`^Quest\\.outpostquest_t${n}_l\\d+$`, "i");
+            const won = Object.values(profile.items).filter((item) => quest.test(item.templateId) &&
+                (item.attributes.quest_state === "Completed" || item.attributes.quest_state === "Claimed")).length;
+            levels.Outpost_StormShield = Math.max(levels.Outpost_StormShield || 0, won);
+            for (const [asset, level] of Object.entries(levels)) if (level > 0) lines.push(`structure ${n} ${asset} ${level}`);
+        }
         // The backpack: what the player carried out of the last zone (theater0), "backpack <asset path> <count> <slot>".
         const backpack = await ProfileModel.findOne({ accountId: req.params.accountId, profileId: "theater0" });
         for (const item of Object.values(backpack?.items || {})) {
@@ -299,11 +311,42 @@ module.exports = (app) => {
         res.json({ backpack: backpack.length, materials: changed });
     });
 
+    // An outpost structure upgraded in the zone (the outpost menu's Build): its new level is kept for the outpost, and
+    // the account items it cost come off the campaign profile (the zone took its own items out already).
+    // Body: { accountId, outpost, structure, level, accountItems: [{ name, quantity }] }.
+    app.post("/fortnite/api/game/v2/ot65/outpost/upgrade", async (req, res) => {
+        if (!isLocal(req)) return res.status(403).json({ error: "local_only" });
+        const { accountId, outpost, structure, level, accountItems } = req.body || {};
+        if (!accountId || !(outpost >= 1 && outpost <= 4) || !/^Outpost_[A-Za-z]+$/.test(structure || "") || !(level >= 1))
+            return res.status(400).json({ error: "missing_fields" });
+        const profile = await ProfileModel.findOne({ accountId, profileId: "profile0" });
+        if (!profile) return res.status(404).json({ error: "profile_not_found" });
+        const stats = profile.stats.attributes;
+        stats.limbo_outposts = stats.limbo_outposts || {};
+        stats.limbo_outposts[outpost] = { ...(stats.limbo_outposts[outpost] || {}), [structure]: level };
+        const spent = [];
+        for (const { name, quantity } of Array.isArray(accountItems) ? accountItems : []) {
+            const wanted = `accountresource.${String(name).toLowerCase()}`;
+            const found = Object.entries(profile.items).find(([, item]) => item.templateId.toLowerCase() === wanted);
+            if (!found || !(quantity > 0)) continue;
+            found[1].quantity = Math.max(0, (found[1].quantity || 0) - quantity);
+            profile.markModified(`items.${found[0]}`);
+            spent.push(`${quantity} ${found[1].templateId}`);
+        }
+        profile.markModified("stats");
+        profile.rvn += 1;
+        profile.commandRevision += 1;
+        await profile.save();
+        console.log(`[OT6.5] ${accountId} upgraded ${structure} to level ${level} in outpost ${outpost}${spent.length ? `, spent ${spent.join(", ")}` : ""}`);
+        res.json({ ok: true, level });
+    });
+
     // A finished mission. On a win, the mission's rewards (and its mission alert's) go into the campaign profile; the
-    // client gets them with its next profile call in the lobby.
+    // client gets them with its next profile call in the lobby. A won outpost (`outpost`: 1-4, the theater's) also
+    // completes the player's open outpost quest there, which hands out its rewards and the next quests.
     app.post("/fortnite/api/game/v2/ot65/mission/end", async (req, res) => {
         if (!isLocal(req)) return res.status(403).json({ error: "local_only" });
-        const { accountId, theaterId, missionGuid, victory } = req.body || {};
+        const { accountId, theaterId, missionGuid, victory, outpost } = req.body || {};
         if (!accountId || !theaterId || !missionGuid) return res.status(400).json({ error: "missing_fields" });
         if (!victory) return res.json({ granted: [], skipped: [] });
 
@@ -322,6 +365,13 @@ module.exports = (app) => {
             }
             wrapper.addQuantity(templateId, reward.quantity || 1);
             granted.push({ templateId, quantity: reward.quantity || 1 });
+        }
+        const outpostQuest = outpost > 0 && Object.values(profile.items)
+            .filter((item) => new RegExp(`^Quest\\.outpostquest_t${outpost}_l\\d$`, "i").test(item.templateId) && item.attributes.quest_state === "Active")
+            .map((item) => item.templateId).sort()[0];
+        if (outpostQuest) {
+            quests.completeQuest(profile, outpostQuest);
+            granted.push({ templateId: outpostQuest, quantity: 1 });
         }
         if (granted.length) await profile.save();
         console.log(`[OT6.5] mission ${missionGuid} won by ${accountId}: granted ${JSON.stringify(granted)}, skipped ${JSON.stringify(skipped)}`);

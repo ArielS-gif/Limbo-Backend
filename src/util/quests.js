@@ -32,10 +32,6 @@ const completeQuest = (profile, questId, ApplyProfileChanges = []) => {
         return;
     }
 
-    if (quest.templateId === "Quest.homebaseonboarding") {
-        completeQuest(profile, "Quest.outpostquest_t1_l1", ApplyProfileChanges);
-    }
-
     const profileQuest = profileWrapper.findTemplateId(quest.templateId);
     if (!profileQuest) return; // quest not found
 

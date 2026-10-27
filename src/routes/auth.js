@@ -6,6 +6,7 @@ const ProfileModel = require('../model/profile');
 const quests = require('../util/quests');
 const { getAllItems, generateAttributes, getItem, getItemsStartingWith } = require('../util/gameData');
 const ProfileWrapper = require('../util/ProfileWrapper');
+const homebase = require('../util/homebase');
 
 const createUser = async (username, password, isDedicated = false) => {
     const user = new UserModel({
@@ -120,6 +121,7 @@ const createProfiles = async (user) => {
         })
     })
 
+    homebase.maxOutBuildings(profile0);
     await profile0.save();
 
     const theater0 = new ProfileModel({ accountId: user.accountId, profileId: "theater0" });
@@ -188,6 +190,7 @@ module.exports = (app) => {
                 }
 
                 if (!await bcrypt.compare(password, req.user.password)) return res.status(401).json({ error: "invalid_auth" });
+                await homebase.maxOut(req.user.accountId);
                 break;
             case "refresh_token":
                 if (!req.body.refresh_token) return res.status(400).json({ error: "invalid_request" });
