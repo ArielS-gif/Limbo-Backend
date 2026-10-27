@@ -11,8 +11,10 @@ This is the backend for [Limbo](https://github.com/ArielS-gif/Limbo). It's based
 
 ## Setup
 
-1. Install [Node.js](https://nodejs.org) and [MongoDB](https://www.mongodb.com/try/download/community).
-2. Run `npm install` in this folder.
+1. Download `Limbo-Backend.zip` from [Releases](https://github.com/ArielS-gif/Limbo-Backend/releases) and unzip it
+   next to Limbo. (Use this instead of "Download ZIP", which names the folder `Limbo-Backend-main`.)
+2. Install [Node.js](https://nodejs.org) and [MongoDB](https://www.mongodb.com/try/download/community), then run
+   `npm install` in the `Limbo-Backend` folder.
 3. Copy `.env.example` to `.env` and fill it in: `PORT=3551`, `MONGO_URI=mongodb://127.0.0.1/limbo`, and any long
    random `JWT_SECRET`.
 4. Start it with Limbo's `Play Limbo.bat`, or by running `node index.js`.
