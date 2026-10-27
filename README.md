@@ -13,11 +13,13 @@ This is the backend for [Limbo](https://github.com/ArielS-gif/Limbo). It's based
 
 1. Download `Limbo-Backend.zip` from [Releases](https://github.com/ArielS-gif/Limbo-Backend/releases) and unzip it
    next to Limbo. (Use this instead of "Download ZIP", which names the folder `Limbo-Backend-main`.)
-2. Install [Node.js](https://nodejs.org) and [MongoDB](https://www.mongodb.com/try/download/community), then run
-   `npm install` in the `Limbo-Backend` folder.
-3. Copy `.env.example` to `.env` and fill it in: `PORT=3551`, `MONGO_URI=mongodb://127.0.0.1/limbo`, and any long
-   random `JWT_SECRET`.
-4. Start it with Limbo's `Play Limbo.bat`, or by running `node index.js`.
+2. Install [Node.js](https://nodejs.org) and [MongoDB](https://www.mongodb.com/try/download/community)
+   (leave "Install MongoDB as a Service" ticked).
+3. Start it with Limbo's `Play Limbo.bat`. The first time, it runs `npm install` and makes a `.env` with a new,
+   empty database called `limbo`.
+
+To run it without Limbo: run `npm install`, copy `.env.example` to `.env` and fill it in (`PORT=3551`,
+`MONGO_URI=mongodb://127.0.0.1:27017/limbo`, any long random `JWT_SECRET`), then run `node index.js`.
 
 The original Fortify-Alpha code belongs to vopswtf. Their README is below.
 
