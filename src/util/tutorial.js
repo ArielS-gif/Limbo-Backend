@@ -1,12 +1,17 @@
-// Limbo: the homebase tutorial (name the home base, build the hero building, recruit a hero) is each player's choice.
-// Play Limbo.bat asks it and tells the backend the player plays on (POST ot65/tutorial/skip or /play, from the
-// player's own PC); the choice is kept per address, and when that player logs in an account still in the tutorial
-// is moved past it: what the tutorial would have left behind is put in place.
+// Limbo: the tutorial is each player's choice. To the game it is the Onboarding quests: the homebase's (name the home
+// base, build the hero building, recruit a hero), the first outpost's (Stonewood's first storm shield defense) and the
+// one after it. While any is open, Ray's "Getting Started" leads the way and the Friends list stays locked (the quest
+// manager's bTutorialCompleted). Play Limbo.bat asks the player and tells the backend they play on (POST
+// ot65/tutorial/skip or /play, from the player's own PC); the choice is kept per address, and when that player logs in
+// an account still in the tutorial is moved past it: what playing it would have left behind is put in place.
 const ProfileModel = require("../model/profile");
 const ProfileWrapper = require("./ProfileWrapper");
 const { completeQuest } = require("./quests");
 const { generateAttributes } = require("./gameData");
 const homebase = require("./homebase");
+
+// In the order they come: finishing the first outpost's quest gives the one after it (and the outpost's next quests).
+const kOnboarding = ["Quest.homebaseonboarding", "Quest.outpostquest_t1_l1", "Quest.homebaseonboardingafteroutpost"];
 
 // The four heroes of this build, as the tutorial's recruit step makes them (level 20).
 const kHeroes = [
@@ -27,15 +32,26 @@ function setChoice(req, skip) {
 }
 
 function inTutorial(profile) {
-    const quest = Object.values(profile.items).find((item) => item.templateId === "Quest.homebaseonboarding");
-    return Boolean(quest) && quest.attributes.quest_state !== "Claimed";
+    return Object.values(profile.items).some((item) =>
+        kOnboarding.includes(String(item.templateId).toLowerCase().replace(/^quest\./, "Quest.")) && item.attributes.quest_state !== "Claimed");
 }
 
-// What finishing the tutorial leaves: the quest claimed, a named home base, recruited heroes (the Commando the
-// default), the tutorial's gameplay stats, and the buildings that waited for it.
+// A quest done and claimed, as the game would leave it: completeQuest gives its rewards (the next quests among them).
+function claim(profile, templateId) {
+    const wrapper = new ProfileWrapper(profile);
+    const quest = wrapper.findTemplateId(templateId);
+    if (!quest || quest.value.attributes.quest_state === "Claimed") return;
+    completeQuest(profile, templateId);
+    wrapper.updateAttribute(quest.key, "quest_state", "Claimed");
+    wrapper.updateAttribute(quest.key, "state", "Claimed");
+}
+
+// What finishing the tutorial leaves: its quests claimed (with the first outpost's rewards and next quests), a named
+// home base, recruited heroes (the Commando the default), the tutorial's gameplay stats, and the buildings that waited
+// for it.
 function skip(profile, username) {
     const wrapper = new ProfileWrapper(profile);
-    completeQuest(profile, "Quest.homebaseonboarding");
+    for (const templateId of kOnboarding) claim(profile, templateId);
 
     const stats = profile.stats.attributes;
     if (!stats.homebase || !stats.homebase.townName)
@@ -63,7 +79,7 @@ function skip(profile, username) {
     homebase.maxOutBuildings(profile);
 }
 
-// At login: an account still in the tutorial skips it when its player chose that.
+// At login: an account still in the tutorial skips (the rest of) it when its player chose that.
 async function applyChoice(req, user) {
     if (g_skip.get(clientIp(req)) !== true) return;
     const profile = await ProfileModel.findOne({ accountId: user.accountId, profileId: "profile0" });
@@ -71,7 +87,7 @@ async function applyChoice(req, user) {
     skip(profile, user.username);
     profile.rvn += 1;
     await profile.save();
-    console.log(`[Limbo] ${user.username} skipped the homebase tutorial`);
+    console.log(`[Limbo] ${user.username} skipped the tutorial (the homebase and the first outpost)`);
 }
 
 module.exports = { setChoice, applyChoice, skip };
