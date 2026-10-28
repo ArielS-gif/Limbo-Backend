@@ -22,3 +22,5 @@ server.listen(port, () => {
 
 // OT6.5: chat and presence for the game (XMPP, port 5222).
 require('./src/xmpp')();
+// Limbo: friends' Play Limbo.bat finds this backend on the network (UDP, the same port).
+require('./src/discovery')(Number(port));

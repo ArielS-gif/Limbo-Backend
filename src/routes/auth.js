@@ -7,6 +7,7 @@ const quests = require('../util/quests');
 const { getAllItems, generateAttributes, getItem, getItemsStartingWith } = require('../util/gameData');
 const ProfileWrapper = require('../util/ProfileWrapper');
 const homebase = require('../util/homebase');
+const tutorial = require('../util/tutorial');
 
 const createUser = async (username, password, isDedicated = false) => {
     const user = new UserModel({
@@ -190,6 +191,7 @@ module.exports = (app) => {
                 }
 
                 if (!await bcrypt.compare(password, req.user.password)) return res.status(401).json({ error: "invalid_auth" });
+                await tutorial.applyChoice(req, req.user);
                 await homebase.maxOut(req.user.accountId);
                 break;
             case "refresh_token":
@@ -211,6 +213,7 @@ module.exports = (app) => {
                 }
 
                 req.user = await UserModel.findOne({ accountId: refreshToken.identifier }).lean();
+                if (req.user) await tutorial.applyChoice(req, req.user);
                 break;
             default:
                 return res.status(400).json({ error: "invalid_request" });
@@ -224,7 +227,8 @@ module.exports = (app) => {
         await deleteToken("access", req.user.accountId);
 
         let accessToken = await createAccess(req.user, clientId, req.body.grant_type, deviceId, 8); // expires in 8 hours
-        let refreshToken = await createRefresh(req.user, clientId, req.body.grant_type, deviceId, 24); // expires in 24 hours
+        // 30 days: "Remember me" saves this token and logs in with it on the next start, however long after.
+        let refreshToken = await createRefresh(req.user, clientId, req.body.grant_type, deviceId, 24 * 30);
 
         const decodedAccess = jwt.decode(accessToken);
         const decodedRefresh = jwt.decode(refreshToken);

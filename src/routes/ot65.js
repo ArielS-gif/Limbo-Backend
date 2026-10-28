@@ -7,6 +7,7 @@ const ProfileModel = require("../model/profile");
 const ProfileWrapper = require("../util/ProfileWrapper");
 const { getItem } = require("../util/gameData");
 const quests = require("../util/quests");
+const tutorial = require("../util/tutorial");
 const worldInfo = require("../../common/world_info.json");
 
 // The highest harvest-weapon tier a hero's kits know (Kit_HarvestWeapon_T01..T08 = tags Homebase.HarvestWeapon.Tier0..7).
@@ -136,6 +137,14 @@ function liveLobby(lobby) {
 
 module.exports = (app) => {
 
+    // Play Limbo.bat, before the game starts: whether this player's accounts skip the homebase tutorial.
+    app.post("/fortnite/api/game/v2/ot65/tutorial/:choice", (req, res) => {
+        if (!isLocal(req)) return res.status(403).json({ error: "local_only" });
+        if (req.params.choice !== "skip" && req.params.choice !== "play") return res.status(400).json({ error: "invalid_request" });
+        tutorial.setChoice(req, req.params.choice === "skip");
+        res.json({ tutorial: req.params.choice });
+    });
+
     app.post("/fortnite/api/game/v2/ot65/session", (req, res) => {
         if (!isLocal(req)) return res.status(403).json({ error: "local_only" });
         const { accountId, port, zone, players, closed } = req.body || {};
@@ -151,16 +160,20 @@ module.exports = (app) => {
     });
 
     // Play pressed: { accountId, missionId, theaterId, seconds }. Joins another player's open lobby (or tells the
-    // address of a game already running), else opens this player's own.
+    // address of a game already running), else opens this player's own. With { host }: Join on that friend in the
+    // Friends list, their launch screen or game only ({ none } when they have neither).
     app.post("/fortnite/api/game/v2/ot65/lobby/play", (req, res) => {
-        const { accountId, missionId, theaterId, seconds } = req.body || {};
+        const { accountId, missionId, theaterId, seconds, host: friend } = req.body || {};
         if (!kAccountId.test(accountId || "")) return res.status(400).json({ error: "invalid_request" });
         for (const [key, lobby] of lobbies) if (!liveLobby(lobby)) lobbies.delete(key);
         for (const lobby of lobbies.values()) lobby.members.delete(accountId);
         lobbies.delete(accountId);
         const now = Date.now();
-        const running = [...sessions.values()].find((s) => now - s.at < kSessionTtlMs && s.accountId !== accountId && s.players < kMaxPlayers);
-        const open = [...lobbies.values()].find((l) => l.host !== accountId && 1 + l.members.size < kMaxPlayers);
+        const wanted = (host) => !friend || host === friend;
+        const running = [...sessions.values()].find((s) => now - s.at < kSessionTtlMs && s.accountId !== accountId &&
+                                                           s.players < kMaxPlayers && wanted(s.accountId));
+        const open = [...lobbies.values()].find((l) => l.host !== accountId && 1 + l.members.size < kMaxPlayers && wanted(l.host));
+        if (friend && !open && !running) return res.json({ none: true });
         if (open) {
             open.members.add(accountId);
             console.log(`[OT6.5] ${accountId} joined ${open.host}'s launch screen (${1 + open.members.size} players)`);
@@ -204,6 +217,17 @@ module.exports = (app) => {
         res.json({ ok: true });
     });
 
+    // The players a Friends list can join right now (an open launch screen or a game with room), one account id a line.
+    app.get("/fortnite/api/game/v2/ot65/joinable/:accountId", (req, res) => {
+        const now = Date.now();
+        const hosts = new Set();
+        for (const lobby of lobbies.values())
+            if (liveLobby(lobby) && 1 + lobby.members.size < kMaxPlayers) hosts.add(lobby.host);
+        for (const s of sessions.values()) if (now - s.at < kSessionTtlMs && s.players < kMaxPlayers) hosts.add(s.accountId);
+        hosts.delete(req.params.accountId);
+        res.type("text/plain").send([...hosts].join("\n") + "\n");
+    });
+
     app.get("/fortnite/api/game/v2/ot65/sessions", (req, res) => {
         const host = (req.headers.host || "127.0.0.1").replace(/:\d+$/, "");
         const now = Date.now();
@@ -241,6 +265,10 @@ module.exports = (app) => {
             const count = Math.min(item.quantity || 0, kMaxZoneStack);
             if (asset && count > 0) lines.push(`item ${folder}/${asset}.${asset} ${count}`);
         }
+        // The profile's schematics, "schematic <item id> <name>": a joined player's craft names its schematic by the id,
+        // and the hosting copy has only its own player's profile.
+        for (const [id, item] of Object.entries(profile.items))
+            if (String(item.templateId).startsWith("Schematic.")) lines.push(`schematic ${id} ${item.templateId.slice("Schematic.".length)}`);
         for (const loadout of [...(stats.mode_loadouts || []), ...((hero && hero.attributes.mode_loadouts) || [])]) {
             for (const gadget of loadout.selectedGadgets || []) {
                 const name = typeof gadget === "string" ? gadget : gadget?.gadget || gadget?.itemId || "";

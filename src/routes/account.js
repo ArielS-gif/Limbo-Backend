@@ -11,6 +11,13 @@ module.exports = (app) => {
         res.json([]);
     });
 
+    // Several accounts at once (?accountId=a&accountId=b): the Friends list's names.
+    app.get("/account/api/public/account", verifyToken, async (req, res) => {
+        const ids = [].concat(req.query.accountId || []);
+        const users = await UserModel.find({}, { accountId: 1, username: 1 }).lean();
+        res.json(users.filter((u) => ids.includes(u.accountId)).map((u) => ({ id: u.accountId, displayName: u.username, externalAuths: {} })));
+    });
+
     app.get("/account/api/public/account/:accountId", verifyToken, async (req, res) => {
         const user = await UserModel.findOne({ accountId: req.params.accountId }).lean();
         if (!user) return res.status(404).json({ error: "user not found" });

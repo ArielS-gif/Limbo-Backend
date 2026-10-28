@@ -112,7 +112,8 @@ function logStanza(client, element) {
     const kind = `${element.name} ${element.attrs.type || ""} ${element.children.map((c) => c.attrs.xmlns || c.name).join(",")}`;
     const count = (seenKinds.get(kind) || 0) + 1;
     seenKinds.set(kind, count);
-    if (count <= 3 && seenKinds.size <= kLogStanzas) console.log(`[XMPP] ${client.accountId || "?"} -> ${serialize(element).slice(0, 400)}`);
+    if (process.env.LIMBO_XMPP_TRACE) console.log(`[XMPP] ${client.accountId || "?"} -> ${serialize(element).slice(0, 4000)}`);  // everything
+    else if (count <= 3 && seenKinds.size <= kLogStanzas) console.log(`[XMPP] ${client.accountId || "?"} -> ${serialize(element).slice(0, 400)}`);
 }
 
 function send(client, xml) {
@@ -304,3 +305,6 @@ module.exports = () => {
     server.on("error", (e) => console.error(`[XMPP] can't listen on ${kPort}: ${e.message}`));
     server.listen(kPort, () => console.log(`XMPP (chat and presence) is running on port ${kPort}`));
 };
+
+// The names of the players online (logged in to chat), for the network discovery's answer.
+module.exports.online = () => [...new Set([...clients].map((client) => client.name).filter(Boolean))];
